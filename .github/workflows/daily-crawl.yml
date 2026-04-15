@@ -1,0 +1,41 @@
+name: Daily Paper Crawl
+
+on:
+  schedule:
+    # UTC 00:30 every day = UTC+8 08:30 (Taiwan time)
+    - cron: '30 0 * * *'
+  workflow_dispatch:
+    inputs:
+      date:
+        description: 'Override date (YYYY-MM-DD). Leave empty for today.'
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Run crawler
+        run: python scripts/crawl.py
+        env:
+          SCOUT_DATE: ${{ inputs.date || '' }}
+
+      - name: Commit and push data
+        run: |
+          git config user.name "paper-bot"
+          git config user.email "paper-bot@users.noreply.github.com"
+          git add data/
+          git diff --cached --quiet || (git commit -m "📥 papers $(date +%Y-%m-%d)" && git push)
